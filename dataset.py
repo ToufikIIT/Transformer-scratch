@@ -12,5 +12,6 @@ class BilingualDataset(Dataset):
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
         self.seq_len = seq_len
-        
+    
+    
         
