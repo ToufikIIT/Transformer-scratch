@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset,DataLoader, random_split
 
+from dataset import BilingualDataset, casual_mask
+
 from datasets import load_dataset
 from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
@@ -39,3 +41,4 @@ def get_ds(config):
     val_ds_size = len(ds_raw) - train_ds_size
     train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
     
+    train_ds = BilingualDataset(train_ds_raw, tokenizer_src, tokenizer_tgt, config['lang_src'], config['lang_tgt'], config['seq_len'])
