@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset,DataLoader, random_split
+import warnings
 
 from config import get_config, get_weights_file_path, latest_weights_file_path
 
@@ -97,12 +98,19 @@ def train_model(config):
     initial_epoch = 0
     global_step = 0
     if config['preload']:
-        model_filename = get_weights_file_path(config,config['preload'])
-        print(f"Preloading model from {model_filename}...")
-        state = torch.load(model_filename)
-        initial_epoch = state['epoch'] + 1
-        optimizer.load_state_dict(state['optimizer_state_dict'])
-        global_step = state['global_step']
+        if config['preload'] == "latest":
+            model_filename = latest_weights_file_path(config)
+        else:
+            model_filename = get_weights_file_path(config, config['preload'])
+
+        if model_filename and Path(model_filename).is_file():
+            print(f"Preloading model from {model_filename}...")
+            state = torch.load(model_filename)
+            initial_epoch = state['epoch'] + 1
+            optimizer.load_state_dict(state['optimizer_state_dict'])
+            global_step = state['global_step']
+        else:
+            print("No weights found to preload; starting from scratch.")
         
     loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer_src.token_to_id('[PAD]'), label_smoothing=0.1).to(device)
     
@@ -119,7 +127,7 @@ def train_model(config):
 
             # Run the tensors through the encoder, decoder and the projection layer
             encoder_output = model.encode(encoder_input, encoder_mask) # (B, seq_len, d_model)
-            decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask) # (B, seq_len, d_model)
+            decoder_output = model.decode(decoder_input, encoder_output, encoder_mask, decoder_mask) # (B, seq_len, d_model)
             proj_output = model.project(decoder_output) # (B, seq_len, tgt_vocab_size)
 
             # Compare the output with the label
@@ -154,3 +162,8 @@ def train_model(config):
             'optimizer_state_dict': optimizer.state_dict(),
             'global_step': global_step
         }, model_filename)
+
+if __name__ == '__main__':
+    warnings.filterwarnings("ignore")
+    config = get_config()
+    train_model(config)
